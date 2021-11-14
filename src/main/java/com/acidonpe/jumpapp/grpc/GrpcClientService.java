@@ -6,9 +6,6 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.acidonpe.jumpapp.grpc.proto.*;
 
 @Service
@@ -19,7 +16,7 @@ public class GrpcClientService {
         System.out.println("gRPC Client: Request received " + request);
 
         // Obtaining Jump Step
-        String url = request.getJumps(request.getJumpsCount()-1);
+        String url = request.getJumps(0);
         String[] parts = url.split(":");
         String addr = parts[0];
         int port = Integer.parseInt(parts[1]);
@@ -33,27 +30,8 @@ public class GrpcClientService {
         JumpServiceGrpc.JumpServiceBlockingStub jumpClient = JumpServiceGrpc.newBlockingStub(channel);
 
         try {
-
-            // Add Defined Jumps
-            List<String> jumpList = new ArrayList<String>();
-            if (request.getJumpsCount() > 1) {
-                for (int i = 0; i<request.getJumpsCount()-1; i = i + 1) {
-                    jumpList.add(request.getJumps(i));
-                }
-            } else {
-                jumpList.add("");
-            }
-
-            // Creating new jump request
-            JumpReq newJump = JumpReq
-            .newBuilder()
-            .setCount(request.getCount())
-            .setMessage(request.getMessage())
-            .addAllJumps(jumpList)
-            .build();
-
             // Perform the new jump
-            final Response response = jumpClient.jump(newJump);
+            final Response response = jumpClient.jump(request);
             return response;
 
         } catch (StatusRuntimeException e) {
