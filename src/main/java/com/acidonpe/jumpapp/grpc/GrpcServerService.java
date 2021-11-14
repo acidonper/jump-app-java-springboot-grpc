@@ -15,33 +15,37 @@ public class GrpcServerService extends JumpServiceGrpc.JumpServiceImplBase {
 
         // Add a new count
         int count = req.getCount() + 1;
+
         // Log
         System.out.println("gRPC Server: Steps count " + Integer.toString(count));
 
-        Response reply;
+        Response responseJump;
 
         // Evaluate jumps to send response or perform a jump
-        if (req.getJumpsCount() == 0 || req.getCount() == 2 || req.getJumps(0) == "") {
+        if (req.getJumpsCount() == 0 || req.getJumps(0) == "") {
             // Log
             System.out.println("gRPC Server: Send response 200");
             
             // Reply response when no jumps are included
-            reply = Response.newBuilder()
+            responseJump = Response.newBuilder()
             .setMessage("/jump - Greetings from SpringBoot gRPC! | Jumps: " + Integer.toString(count))
             .setCode(200)
             .build();
         } else {
             // Perform the respective Jump
-            Response responseJump = new GrpcClientService().sendMessage(req);
+            JumpReq newJump = JumpReq
+            .newBuilder()
+            .setCount(count)
+            .setMessage(req.getMessage())
+            .addAllJumps(req.getJumpsList())
+            .build();
+            responseJump = new GrpcClientService().sendMessage(newJump);
 
             // Log
-            System.out.println("gRPC Server: Response received" + responseJump);
-
-            // Reply
-            reply = Response.newBuilder().setMessage("Bye ==> " + req.getCount()).build();
+            System.out.println("gRPC Server: Response received " + responseJump);
         }
 
-        responseObserver.onNext(reply);
+        responseObserver.onNext(responseJump);
         responseObserver.onCompleted();
     }
 

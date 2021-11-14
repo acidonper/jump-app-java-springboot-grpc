@@ -1,27 +1,65 @@
 package com.acidonpe.jumpapp.grpc;
 
-import net.devh.boot.grpc.client.inject.GrpcClient;
-import com.acidonpe.jumpapp.grpc.proto.JumpServiceGrpc.JumpServiceBlockingStub;
 import org.springframework.stereotype.Service;
+
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import com.acidonpe.jumpapp.grpc.proto.*;
 
 @Service
 public class GrpcClientService {
-
-    @GrpcClient("local-grpc-server")
-    private JumpServiceBlockingStub jumpStub;
-
+        
     public Response sendMessage(final JumpReq request) {
-        // log
+        // Log
         System.out.println("gRPC Client: Request received " + request);
+
+        // Obtaining Jump Step
+        String url = request.getJumps(request.getJumpsCount()-1);
+        String[] parts = url.split(":");
+        String addr = parts[0];
+        int port = Integer.parseInt(parts[1]);
+        System.out.println("gRPC Client: Jump to " + addr + ":" + port);
+
+        // Creating a new channel
+        ManagedChannel channel = ManagedChannelBuilder
+        .forAddress(addr,port)
+        .usePlaintext()
+        .build();
+        JumpServiceGrpc.JumpServiceBlockingStub jumpClient = JumpServiceGrpc.newBlockingStub(channel);
+
         try {
-            final Response response = this.jumpStub.jump(request);
-            // final Response response = this.jumpStub.jump(JumpReq.newBuilder().addJumps("").setMessage("pepe").build());
+
+            // Add Defined Jumps
+            List<String> jumpList = new ArrayList<String>();
+            if (request.getJumpsCount() > 1) {
+                for (int i = 0; i<request.getJumpsCount()-1; i = i + 1) {
+                    jumpList.add(request.getJumps(i));
+                }
+            } else {
+                jumpList.add("");
+            }
+
+            // Creating new jump request
+            JumpReq newJump = JumpReq
+            .newBuilder()
+            .setCount(request.getCount())
+            .setMessage(request.getMessage())
+            .addAllJumps(jumpList)
+            .build();
+
+            // Perform the new jump
+            final Response response = jumpClient.jump(newJump);
             return response;
-        } catch (final StatusRuntimeException e) {
+
+        } catch (StatusRuntimeException e) {
+            System.out.println("gRPC Client: Error " + e.getMessage());
             return Response.newBuilder()
-            .setMessage("/jump - Greetings from SpringBoot gRPC! | Jumps: " + Integer.toString(request.getCount()))
+            .setMessage("/jump - Farewell from SpringBoot gRPC! | Jumps: " + Integer.toString(request.getCount()))
             .setCode(400)
             .build();
         }
